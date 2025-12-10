@@ -1,9 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Note } from '@/types/note';
-import { useStorageMode } from '@/contexts/StorageModeContext';
-import { toast } from '@/hooks/use-toast';
+import { useState, useEffect, useCallback } from "react";
+import { Note } from "@/types/note";
+import { useStorageMode } from "@/contexts/StorageModeContext";
+import { toast } from "@/hooks/use-toast";
 
 const generateId = () => Math.random().toString(36).substring(2, 15);
+
+// Helper to handle MongoDB _id or standard id
+const normalizeNote = (note: any): Note => ({
+  ...note,
+  id: note._id || note.id,
+});
 
 export const useNotes = () => {
   const { mode, apiUrl } = useStorageMode();
@@ -14,22 +20,25 @@ export const useNotes = () => {
   const fetchNotes = useCallback(async () => {
     setLoading(true);
     try {
-      if (mode === 'local') {
-        const stored = localStorage.getItem('notes');
+      if (mode === "local") {
+        const stored = localStorage.getItem("notes");
         setNotes(stored ? JSON.parse(stored) : []);
       } else {
         const response = await fetch(apiUrl);
-        if (!response.ok) throw new Error('Failed to fetch notes');
+        if (!response.ok) throw new Error("Failed to fetch notes");
         const data = await response.json();
-        setNotes(data);
+        setNotes(Array.isArray(data) ? data.map(normalizeNote) : []);
       }
     } catch (error) {
       toast({
         title: "Error",
-        description: mode === 'backend' ? "Cannot connect to backend. Is it running?" : "Failed to load notes",
+        description:
+          mode === "backend"
+            ? "Cannot connect to backend. Is it running?"
+            : "Failed to load notes",
         variant: "destructive",
       });
-      if (mode === 'backend') setNotes([]);
+      if (mode === "backend") setNotes([]);
     } finally {
       setLoading(false);
     }
@@ -50,19 +59,19 @@ export const useNotes = () => {
     };
 
     try {
-      if (mode === 'local') {
+      if (mode === "local") {
         const updatedNotes = [newNote, ...notes];
         setNotes(updatedNotes);
-        localStorage.setItem('notes', JSON.stringify(updatedNotes));
+        localStorage.setItem("notes", JSON.stringify(updatedNotes));
       } else {
         const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title, content }),
         });
-        if (!response.ok) throw new Error('Failed to create note');
+        if (!response.ok) throw new Error("Failed to create note");
         const created = await response.json();
-        setNotes(prev => [created, ...prev]);
+        setNotes((prev) => [normalizeNote(created), ...prev]);
       }
       toast({
         title: "Created!",
@@ -86,21 +95,23 @@ export const useNotes = () => {
     };
 
     try {
-      if (mode === 'local') {
-        const updatedNotes = notes.map(note =>
+      if (mode === "local") {
+        const updatedNotes = notes.map((note) =>
           note.id === id ? { ...note, ...updatedNote } : note
         );
         setNotes(updatedNotes);
-        localStorage.setItem('notes', JSON.stringify(updatedNotes));
+        localStorage.setItem("notes", JSON.stringify(updatedNotes));
       } else {
         const response = await fetch(`${apiUrl}/${id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title, content }),
         });
-        if (!response.ok) throw new Error('Failed to update note');
+        if (!response.ok) throw new Error("Failed to update note");
         const updated = await response.json();
-        setNotes(prev => prev.map(note => note.id === id ? updated : note));
+        setNotes((prev) =>
+          prev.map((note) => (note.id === id ? normalizeNote(updated) : note))
+        );
       }
       toast({
         title: "Updated!",
@@ -117,19 +128,19 @@ export const useNotes = () => {
 
   // Delete note
   const deleteNote = async (id: string) => {
-    const noteToDelete = notes.find(n => n.id === id);
-    
+    const noteToDelete = notes.find((n) => n.id === id);
+
     try {
-      if (mode === 'local') {
-        const updatedNotes = notes.filter(note => note.id !== id);
+      if (mode === "local") {
+        const updatedNotes = notes.filter((note) => note.id !== id);
         setNotes(updatedNotes);
-        localStorage.setItem('notes', JSON.stringify(updatedNotes));
+        localStorage.setItem("notes", JSON.stringify(updatedNotes));
       } else {
         const response = await fetch(`${apiUrl}/${id}`, {
-          method: 'DELETE',
+          method: "DELETE",
         });
-        if (!response.ok) throw new Error('Failed to delete note');
-        setNotes(prev => prev.filter(note => note.id !== id));
+        if (!response.ok) throw new Error("Failed to delete note");
+        setNotes((prev) => prev.filter((note) => note.id !== id));
       }
       toast({
         title: "Deleted!",
