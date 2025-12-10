@@ -14,7 +14,7 @@ const StorageModeContext = createContext<StorageModeContextType | undefined>(
 export const StorageModeProvider = ({ children }: { children: ReactNode }) => {
   const [mode, setMode] = useState<StorageMode>("local");
   const apiUrl =
-    import.meta.env.VITE_API_URL || "http://localhost:8000/api/notes";
+    import.meta.env.VITE_API_URL || "http://localhost:8000/notes";
 
   return (
     <StorageModeContext.Provider value={{ mode, setMode, apiUrl }}>
